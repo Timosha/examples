@@ -36,27 +36,19 @@ func main() {
 
 	r, w := io.Pipe()
 
-	doneChan := make(chan struct{}, 1)
-
 	go func() {
-		defer close(doneChan)
-
-		_, err := db1.PgConn().CopyTo(ctx, w, `copy table1 to stdin binary`)
+		// reader
+		_, err := db1.PgConn().CopyTo(ctx, w, `copy table1 to stdout binary`)
 		if err != nil {
 			slog.Error("error", "error", err)
 			return
 		}
 		_ = w.Close()
-		doneChan <- struct{}{}
 	}()
 
-	_, err = db2.PgConn().CopyFrom(ctx, r, `copy table1 from stdout binary`)
+	// writer
+	_, err = db2.PgConn().CopyFrom(ctx, r, `copy table1 from stdin binary`)
 	_ = r.Close()
-
-	select {
-	case <-doneChan:
-	case <-ctx.Done():
-	}
 
 	return
 }
